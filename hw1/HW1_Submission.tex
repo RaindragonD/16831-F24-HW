@@ -90,8 +90,8 @@ backgroundcolor = \color{light-yellow}
 \begin{centering}
     {\Large Assignment 1: Imitation Learning} \\
     \vspace{.25cm}
-    \textbf{Andrew ID:} \texttt{YOUR ID} \\
-    \textbf{Collaborators:} \texttt{YOUR COLLABORATORS}\\ 
+    \textbf{Andrew ID:} \texttt{yulongl} \\
+    \textbf{Collaborators:} \texttt{N/A}\\ 
 \end{centering}
 
 \vspace{.5cm}
@@ -113,7 +113,6 @@ backgroundcolor = \color{light-yellow}
 \end{table}%
 
 \subsection{Part 3 (35 pt)}
-\# TODO
 \begin{table}[htbp]
   \centering
   \caption{Fill your results in this table.}
@@ -122,30 +121,33 @@ backgroundcolor = \color{light-yellow}
     Env   & \multicolumn{2}{c}{Ant-v2} & \multicolumn{2}{c}{Humanoid-v2} \\
     \midrule
     Metric & Mean  & Std.  & Mean  & Std. \\
-    Expert & xxx & xxx & xxx & xxx \\
-    BC    & xxx & xxx & xxx & xxx \\
+    Expert & 4713.653 & 12.197 & 10344.518 & 20.981 \\
+    BC    & 1729.545 & 767.105 &  281.326 & 15.861 \\
     \bottomrule[1.0pt]
     \end{tabular}%
   \label{tab:p3}%
+  \caption{BC agent performance with 3 layers MLP of width 256, trained for 1000 steps.}
 \end{table}%
 
 \subsection{Part 4 (20 pt)}
-\# TODO, fill in the \fref{fig:p4}, provide some analysis.
+
+The graph shows how the BC agent's performance varies with the MLP width. We can see that the performance increases as the width increases initially, which makes sense because a wider network has more parameters to learn from the data. However, after a certain point, the performance starts to decrease. This is because the network becomes too large and starts to overfit to the data.
+
 
 \begin{figure*}[!h]
 	\centering
-\includegraphics[width=0.5\columnwidth]{figure_placeholder.pdf}
-	\caption{BC agent’s performance varies with the value of ??? parameter in ??? environment.}
+\includegraphics[width=0.5\columnwidth]{../hw1/rob831/scripts/bc_agent_performance_vs_mlp_width.png}
+	\caption{BC agent’s performance varies with the value of MLP width in Ant-v2 environment.}
 	\label{fig:p4}
 \end{figure*}
 
 \section{DAgger (35 pt)}
 \subsection{Part 2 (35 pt)}
-\# TODO, Report the results for Ant-v2 and Humanoid-v2 in \fref{fig:p5}:
+
 \begin{figure*}[!h]
 	\centering
-	\includegraphics[width=1.0\columnwidth]{figure_placeholder.pdf}
-	\caption{Learning curve, plotting the number of DAgger iterations vs. the policy’s mean return, with error bars to show the standard deviation. Please show the Ant-v2 environment on the left and the right part demonstrates Humanoid-v2 environment.}
+	\includegraphics[width=1.0\columnwidth]{../hw1/rob831/scripts/dagger_performance.png}
+	\caption{BC with DAgger performance with 2 layers MLP of width 64, trained for 1000 steps per iterations.}
 	\label{fig:p5}
 \end{figure*}
 
