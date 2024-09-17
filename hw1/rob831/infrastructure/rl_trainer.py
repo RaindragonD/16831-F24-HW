@@ -35,6 +35,7 @@ class RL_Trainer(object):
         # Get params, create logger, create TF session
         self.params = params
         self.logger = Logger(self.params['logdir'])
+        self.eval_logs = []
 
         # Set random seeds
         seed = self.params['seed']
@@ -145,6 +146,10 @@ class RL_Trainer(object):
                 if self.params['save_params']:
                     print('\nSaving agent params')
                     self.agent.save('{}/policy_itr_{}.pt'.format(self.params['logdir'], itr))
+            
+            with open(os.path.join(self.params['logdir'], 'eval_logs.npy'), 'wb') as f:
+                np.save(f, np.array(self.eval_logs))
+
 
     ####################################
     ####################################
@@ -205,9 +210,10 @@ class RL_Trainer(object):
     def train_agent(self):
         print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
-        eval_logs = []
+
+        print(self.params['num_agent_train_steps_per_iter'])
         pbar = tqdm(range(self.params['num_agent_train_steps_per_iter']))
-        eval_returns = None
+
         for train_step in pbar:
 
             # TODO sample some data from the data buffer
@@ -221,21 +227,11 @@ class RL_Trainer(object):
             train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_logs.append(train_log)
             if train_step % 100 == 0:
-                eval_return = round(np.mean(eval_returns)) if eval_returns is not None else 0
                 pbar.set_postfix(
                     {
                         'loss': f"{train_log['Training Loss']:.4f}", 
-                        'avg': eval_return
                     }
                 )
-            if train_step % 2000 == 0:
-                eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(
-                    self.env, self.agent.actor, self.params['eval_batch_size'], self.params['ep_len'])
-                eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
-                eval_logs.append([np.mean(eval_returns), np.std(eval_returns)])
-                
-                with open(os.path.join(self.params['logdir'], 'eval_logs.npy'), 'wb') as f:
-                    np.save(f, np.array(eval_logs))
             
         return all_logs
 
@@ -316,3 +312,5 @@ class RL_Trainer(object):
             print('Done logging...\n\n')
 
             self.logger.flush()
+            
+            self.eval_logs.append([np.mean(eval_returns), np.std(eval_returns)])
