@@ -9,6 +9,8 @@ from rob831.infrastructure import pytorch_util as ptu
 from rob831.infrastructure.logger import Logger
 from rob831.infrastructure import utils
 import pickle 
+from tqdm import tqdm
+import os
 
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
@@ -116,7 +118,8 @@ class RL_Trainer(object):
                 itr,
                 initial_expertdata,
                 collect_policy,
-                self.params['batch_size']
+                self.params['batch_size'],
+                # n_load=self.params['n_load']
             )  # HW1: implement this function below
             paths, envsteps_this_batch, train_video_paths = training_returns
             self.total_envsteps += envsteps_this_batch
@@ -152,6 +155,7 @@ class RL_Trainer(object):
             load_initial_expertdata,
             collect_policy,
             batch_size,
+            n_load=-1,
     ):
         """
         :param itr:
@@ -168,14 +172,24 @@ class RL_Trainer(object):
         # HINT: depending on if it's the first iteration or not, decide whether to either
         # (1) load the data. In this case you can directly return as follows
         # ``` return loaded_paths, 0, None ```
-
+        if itr == 0 and load_initial_expertdata is not None:
+            with open(load_initial_expertdata, 'rb') as f:
+                loaded_paths = pickle.load(f)
+            if n_load > 0:
+                loaded_paths = loaded_paths[:n_load]
+            return loaded_paths, 0, None
         # (2) collect `self.params['batch_size']` transitions
 
         # TODO collect `batch_size` samples to be used for training
         # HINT1: use sample_trajectories from utils
         # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
         print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = TODO
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            self.env, 
+            collect_policy, 
+            batch_size, 
+            self.params['ep_len']
+        )
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
@@ -191,18 +205,38 @@ class RL_Trainer(object):
     def train_agent(self):
         print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
-        for train_step in range(self.params['num_agent_train_steps_per_iter']):
+        eval_logs = []
+        pbar = tqdm(range(self.params['num_agent_train_steps_per_iter']))
+        eval_returns = None
+        for train_step in pbar:
 
             # TODO sample some data from the data buffer
             # HINT1: use the agent's sample function
             # HINT2: how much data = self.params['train_batch_size']
-            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = TODO
+            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
 
             # TODO use the sampled data to train an agent
             # HINT: use the agent's train function
             # HINT: keep the agent's training log for debugging
-            train_log = TODO
+            train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_logs.append(train_log)
+            if train_step % 100 == 0:
+                eval_return = round(np.mean(eval_returns)) if eval_returns is not None else 0
+                pbar.set_postfix(
+                    {
+                        'loss': f"{train_log['Training Loss']:.4f}", 
+                        'avg': eval_return
+                    }
+                )
+            if train_step % 2000 == 0:
+                eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(
+                    self.env, self.agent.actor, self.params['eval_batch_size'], self.params['ep_len'])
+                eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
+                eval_logs.append([np.mean(eval_returns), np.std(eval_returns)])
+                
+                with open(os.path.join(self.params['logdir'], 'eval_logs.npy'), 'wb') as f:
+                    np.save(f, np.array(eval_logs))
+            
         return all_logs
 
     def do_relabel_with_expert(self, expert_policy, paths):
@@ -211,6 +245,11 @@ class RL_Trainer(object):
         # TODO relabel collected obsevations (from our policy) with labels from an expert policy
         # HINT: query the policy (using the get_action function) with paths[i]["observation"]
         # and replace paths[i]["action"] with these expert labels
+
+        for path in paths:
+            observations = path["observation"]
+            expert_actions = expert_policy.get_action(observations)
+            path["action"] = expert_actions
 
         return paths
 
@@ -224,14 +263,15 @@ class RL_Trainer(object):
         eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
 
         # save eval rollouts as videos in tensorboard event file
-        if self.log_video and train_video_paths != None:
+        if self.log_video:
             print('\nCollecting video rollouts eval')
             eval_video_paths = utils.sample_n_trajectories(self.env, eval_policy, MAX_NVIDEO, self.MAX_VIDEO_LEN, True)
 
             #save train/eval videos
             print('\nSaving train rollouts as videos...')
-            self.logger.log_paths_as_videos(train_video_paths, itr, fps=self.fps, max_videos_to_save=MAX_NVIDEO,
-                                            video_title='train_rollouts')
+            if train_video_paths != None:
+                self.logger.log_paths_as_videos(train_video_paths, itr, fps=self.fps, max_videos_to_save=MAX_NVIDEO,
+                                                video_title='train_rollouts')
             self.logger.log_paths_as_videos(eval_video_paths, itr, fps=self.fps,max_videos_to_save=MAX_NVIDEO,
                                              video_title='eval_rollouts')
 
