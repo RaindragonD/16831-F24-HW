@@ -68,8 +68,8 @@ def main():
     parser.add_argument('--train_batch_size', type=int,
                         default=100)  # number of sampled data points to be used per gradient/train step
 
-    parser.add_argument('--n_layers', type=int, default=3)  # depth, of policy to be learned
-    parser.add_argument('--size', type=int, default=256)  # width of each layer, of policy to be learned
+    parser.add_argument('--n_layers', type=int, default=2)  # depth, of policy to be learned
+    parser.add_argument('--size', type=int, default=64)  # width of each layer, of policy to be learned
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)  # LR for supervised learning
 
     parser.add_argument('--video_log_freq', type=int, default=5)
