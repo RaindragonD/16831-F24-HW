@@ -227,11 +227,21 @@ class RL_Trainer(object):
             train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_logs.append(train_log)
             if train_step % 100 == 0:
+                eval_return = round(np.mean(eval_returns)) if eval_returns is not None else 0
                 pbar.set_postfix(
                     {
                         'loss': f"{train_log['Training Loss']:.4f}", 
+                        'avg': eval_return
                     }
                 )
+            if train_step % 2000 == 0:
+                eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(
+                    self.env, self.agent.actor, self.params['eval_batch_size'], self.params['ep_len'])
+                eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
+                eval_logs.append([np.mean(eval_returns), np.std(eval_returns)])
+                
+                with open(os.path.join(self.params['logdir'], 'eval_logs.npy'), 'wb') as f:
+                    np.save(f, np.array(eval_logs))
             
         return all_logs
 
