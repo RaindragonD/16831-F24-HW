@@ -71,6 +71,13 @@ done
 
 # Q6 Parallel Sampling, CartPole-v0
 ```bash
-{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 --num_threads 1 --exp_name q6_1_thread; } 2>&1 | tee q6_1_thread_time.log
-{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 --num_threads 32 --exp_name q6_32_threads; } 2>&1 | tee q6_32_threads_time.log
+{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg -dsa --num_threads 1 --exp_name q6_1_thread; } 2>&1 | tee q6_1_thread_time.log
+{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg -dsa --num_threads 8 --exp_name q6_8_threads; } 2>&1 | tee q6_8_threads_time.log
+```
+
+# Q7 Varying the Number of Agent Training Steps per Iteration, CartPole-v0
+```bash
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 1 --exp_name q7_1step
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 8 --exp_name q7_8step
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 32 --exp_name q7_32step
 ```
