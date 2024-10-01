@@ -14,6 +14,13 @@ from rob831.infrastructure import utils
 from rob831.infrastructure.logger import Logger
 from rob831.infrastructure.action_noise_wrapper import ActionNoiseWrapper
 
+import multiprocessing
+from functools import partial
+
+# Add this at the beginning of the file, after imports
+if torch.cuda.is_available():
+    multiprocessing.set_start_method('spawn', force=True)
+
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
 MAX_VIDEO_LEN = 40 # we overwrite this in the code below
@@ -40,17 +47,17 @@ class RL_Trainer(object):
             gpu_id=self.params['which_gpu']
         )
 
+        # Add new parameter for number of parallel threads
+        self.num_threads = params.get('num_threads', 1)
+
+        # We'll create environments in each worker process instead of here
+
         #############
         ## ENV
         #############
 
         # Make the gym environment
-        self.env = gym.make(self.params['env_name'])
-        self.env.seed(seed)
-
-        # Add noise wrapper
-        if params['action_noise_std'] > 0:
-            self.env = ActionNoiseWrapper(self.env, seed, params['action_noise_std'])
+        self.envs = [self.create_env(i) for i in range(self.num_threads)]
 
         # import plotting (locally if 'obstacles' env)
         if not(self.params['env_name']=='obstacles-rob831-v0'):
@@ -58,31 +65,31 @@ class RL_Trainer(object):
             matplotlib.use('Agg')
 
         # Maximum length for episodes
-        self.params['ep_len'] = self.params['ep_len'] or self.env.spec.max_episode_steps
+        self.params['ep_len'] = self.params['ep_len'] or self.envs[0].spec.max_episode_steps
         global MAX_VIDEO_LEN
         MAX_VIDEO_LEN = self.params['ep_len']
 
         # Is this env continuous, or self.discrete?
-        discrete = isinstance(self.env.action_space, gym.spaces.Discrete)
+        discrete = isinstance(self.envs[0].action_space, gym.spaces.Discrete)
         # Are the observations images?
-        img = len(self.env.observation_space.shape) > 2
+        img = len(self.envs[0].observation_space.shape) > 2
 
         self.params['agent_params']['discrete'] = discrete
 
         # Observation and action sizes
 
-        ob_dim = self.env.observation_space.shape if img else self.env.observation_space.shape[0]
-        ac_dim = self.env.action_space.n if discrete else self.env.action_space.shape[0]
+        ob_dim = self.envs[0].observation_space.shape if img else self.envs[0].observation_space.shape[0]
+        ac_dim = self.envs[0].action_space.n if discrete else self.envs[0].action_space.shape[0]
         self.params['agent_params']['ac_dim'] = ac_dim
         self.params['agent_params']['ob_dim'] = ob_dim
 
         # simulation timestep, will be used for video saving
-        if 'model' in dir(self.env):
-            self.fps = 1/self.env.model.opt.timestep
+        if 'model' in dir(self.envs[0]):
+            self.fps = 1/self.envs[0].model.opt.timestep
         elif 'env_wrappers' in self.params:
             self.fps = 30 # This is not actually used when using the Monitor wrapper
-        elif 'video.frames_per_second' in self.env.env.metadata.keys():
-            self.fps = self.env.env.metadata['video.frames_per_second']
+        elif 'video.frames_per_second' in self.envs[0].env.metadata.keys():
+            self.fps = self.envs[0].env.metadata['video.frames_per_second']
         else:
             self.fps = 10
 
@@ -92,7 +99,7 @@ class RL_Trainer(object):
         #############
 
         agent_class = self.params['agent_class']
-        self.agent = agent_class(self.env, self.params['agent_params'])
+        self.agent = agent_class(self.envs[0], self.params['agent_params'])
 
     def run_training_loop(self, n_iter, collect_policy, eval_policy,
                           initial_expertdata=None, relabel_with_expert=False,
@@ -155,11 +162,68 @@ class RL_Trainer(object):
 
     def collect_training_trajectories(self, itr, load_initial_expertdata, collect_policy, batch_size):
         # TODO: get this from hw1
-        raise NotImplementedError
+        if itr == 0:
+            if load_initial_expertdata:
+                paths = pickle.load(open(self.params['expert_data'], 'rb'))
+                return paths, 0, None
+            else:
+                num_transitions_to_sample = self.params['batch_size_initial']
+        else:
+            num_transitions_to_sample = self.params['batch_size']
 
+        print("\nCollecting data to be used for training...")
+        
+        if self.num_threads > 1:
+            paths, envsteps_this_batch = self.parallel_sample_trajectories(
+                collect_policy, num_transitions_to_sample, self.params['ep_len'])
+        else:
+            paths, envsteps_this_batch = utils.sample_trajectories(
+                self.envs[0], collect_policy, num_transitions_to_sample, self.params['ep_len'])
+
+        train_video_paths = None
+        if self.log_video:
+            print('\nCollecting train rollouts to be used for saving videos...')
+            train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+
+        return paths, envsteps_this_batch, train_video_paths
+
+    def parallel_sample_trajectories(self, collect_policy, num_transitions_to_sample, ep_len):
+        num_cpus = multiprocessing.cpu_count()
+        
+        transitions_per_thread = num_transitions_to_sample // self.num_threads + 1
+
+        sample_trajectory_partial = partial(
+            utils.sample_trajectories,
+            policy=collect_policy,
+            min_timesteps_per_batch=transitions_per_thread,
+            max_path_length=ep_len,
+        )
+
+        with multiprocessing.Pool(processes=min(self.num_threads, num_cpus)) as pool:
+            results = []
+            for i in range(self.num_threads):
+                results.append(pool.apply_async(sample_trajectory_partial, (self.envs[i],)))
+
+            pool.close()
+            pool.join()
+
+        paths = []
+        envsteps_this_batch = 0
+        for result in results:
+            thread_paths, thread_envsteps = result.get()
+            paths.extend(thread_paths)
+            envsteps_this_batch += thread_envsteps
+
+        return paths, envsteps_this_batch
+    
     def train_agent(self):
         # TODO: get this from hw1
-        raise NotImplementedError
+        all_logs = []
+        for train_step in range(self.params['num_agent_train_steps_per_iter']):
+            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
+            train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
+            all_logs.append(train_log)
+        return all_logs
 
     ####################################
     ####################################
@@ -172,12 +236,12 @@ class RL_Trainer(object):
 
         # collect eval trajectories, for logging
         print("\nCollecting data for eval...")
-        eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
+        eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.envs[0], eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
 
         # save eval rollouts as videos in tensorboard event file
         if self.log_video and train_video_paths != None:
             print('\nCollecting video rollouts eval')
-            eval_video_paths = utils.sample_n_trajectories(self.env, eval_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+            eval_video_paths = utils.sample_n_trajectories(self.envs[0], eval_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
 
             #save train/eval videos
             print('\nSaving train rollouts as videos...')
@@ -227,3 +291,10 @@ class RL_Trainer(object):
             print('Done logging...\n\n')
 
             self.logger.flush()
+
+    def create_env(self, i):
+        env = gym.make(self.params['env_name'])
+        env.seed(self.params['seed']+i)
+        if self.params['action_noise_std'] > 0:
+            env = ActionNoiseWrapper(env, self.params['seed'], self.params['action_noise_std'])
+        return env

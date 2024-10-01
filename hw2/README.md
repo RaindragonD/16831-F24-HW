@@ -1,26 +1,76 @@
-## Setup
 
-You can run this code on your own machine or on Google Colab.
+# Q1 RTG/DSA, CartPole-v0
+```bash
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -dsa --exp_name q1_sb_no_rtg_dsa
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg -dsa --exp_name q1_sb_rtg_dsa
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg --exp_name q1_sb_rtg_na
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -dsa --exp_name q1_lb_no_rtg_dsa
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --exp_name q1_lb_rtg_dsa
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg --exp_name q1_lb_rtg_na
+```
 
-1. **Local option:** If you choose to run locally, you will need to install MuJoCo and some Python packages; see [installation.md](../hw1/installation.md) from homework 1 for instructions. If you completed this installation for homework 1, you do not need to repeat it.
-2. **Colab:** The first few sections of the notebook will install all required dependencies. You can try out the Colab option by clicking the badge below:
+# Q2 RTG/DSA, InvertedPendulum-v4
+```bash
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/LeCAR-Lab/16831-S24-HW/blob/main/hw2/rob831/scripts/run_hw2.ipynb)
+for b in 1000 5000 10000
+do
+  for lr in 0.005 0.01 0.02 0.03
+  do
+    CUDA_VISIBLE_DEVICES=1 python rob831/scripts/run_hw2.py --env_name InvertedPendulum-v4 \
+    --ep_len 1000 --discount 0.9 -n 100 -l 2 -s 64 -b $b -lr $lr -rtg \
+    --exp_name q2_b${b}_r${lr}
+  done
+done
+```
 
-## Complete the code
+# Q3 Baseline, LunarLanderContinuous-v2
+```bash
+python rob831/scripts/run_hw2.py \
+--env_name LunarLanderContinuous-v2 --ep_len 1000 \
+--discount 0.99 -n 100 -l 2 -s 64 -b 10000 -lr 0.005 \
+--reward_to_go --nn_baseline --exp_name q3_b10000_r0.005
+```
 
-The following files have blanks to be filled with your solutions from homework 1. The relevant sections are marked with "TODO: get this from hw1".
+# Q4 Baseline, HalfCheetah-v4
+```bash
+python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+--discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 \
+--exp_name q4_search_b10000_lr0.02
+python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+--discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 -rtg \
+--exp_name q4_search_b10000_lr0.02_rtg
+python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+--discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 --nn_baseline \
+--exp_name q4_search_b10000_lr0.02_nnbaseline
+python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+--discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 -rtg --nn_baseline \
+--exp_name q4_search_b10000_lr0.02_rtg_nnbaseline
 
-- [infrastructure/rl_trainer.py](rob831/infrastructure/rl_trainer.py)
-- [infrastructure/utils.py](rob831/infrastructure/utils.py)
-- [infrastructure/pytorch_util.py](rob831/infrastructure/pytorch_util.py)
-- [infrastructure/replay_buffer.py](rob831/infrastructure/replay_buffer.py)
-- [policies/MLP_policy.py](rob831/policies/MLP_policy.py)
+for b in 10000 30000 50000
+do
+  for lr in 0.005 0.01 0.02
+  do
+    python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+    --discount 0.95 -n 100 -l 2 -s 32 -b $b -lr $lr -rtg --nn_baseline \
+    --exp_name q4_b${b}_lr${lr}
+  done
+done
+```
 
-You will then need to complete the following new files for homework 2. The relevant sections are marked with "TODO".
-- [agents/pg_agent.py](rob831/agents/pg_agent.py)
-- [policies/MLP_policy.py](rob831/policies/MLP_policy.py)
+# Q5 GAE, Hopper-v4 
+```bash
+for gae_lambda in 0 0.95 0.99 1
+do
+  python rob831/scripts/run_hw2.py \
+  --env_name Hopper-v4 --ep_len 1000 \
+  --discount 0.99 -n 300 -l 2 -s 32 -b 2000 -lr 0.001 \
+  --reward_to_go --nn_baseline --action_noise_std 0.5 --gae_lambda $gae_lambda \
+  --exp_name q5_b2000_r0.001_lambda${gae_lambda}
+done
+```
 
-You will also want to look through [scripts/run_hw2.py](rob831/scripts/run_hw2.py) (if running locally) or [scripts/run_hw2.ipynb](rob831/scripts/run_hw2.ipynb) (if running on Colab), though you will not need to edit this files beyond changing runtime arguments in the Colab notebook.
-
-You will be running your policy gradients implementation in five experiments total, investigating the effects of design decisions like reward-to-go estimators, neural network baselines and generalized advantage estimation for variance reduction, and advantage normalization. See the assignment PDF for more details.
+# Q6 Parallel Sampling, CartPole-v0
+```bash
+{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 --num_threads 1 --exp_name q6_1_thread; } 2>&1 | tee q6_1_thread_time.log
+{ time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 --num_threads 32 --exp_name q6_32_threads; } 2>&1 | tee q6_32_threads_time.log
+```

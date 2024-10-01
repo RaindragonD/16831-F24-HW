@@ -47,7 +47,9 @@ class PGAgent(BaseAgent):
         # HINT2: look at the MLPPolicyPG class for how to update the policy
             # and obtain a train_log
 
-        raise NotImplementedError
+        q_vals = self.calculate_q_vals(rewards_list)
+        advs = self.estimate_advantage(observations, rewards_list, q_vals, terminals) 
+        train_log = self.actor.update(observations, actions, advs, q_vals)
 
         return train_log
 
@@ -75,12 +77,12 @@ class PGAgent(BaseAgent):
 
         if not self.reward_to_go:
             #use the whole traj for each timestep
-            raise NotImplementedError
+            q_values = np.concatenate([self._discounted_return(rewards) for rewards in rewards_list])
 
         # Case 2: reward-to-go PG
         # Estimate Q^{pi}(s_t, a_t) by the discounted sum of rewards starting from t
         else:
-            raise NotImplementedError
+            q_values = np.concatenate([self._discounted_cumsum(rewards) for rewards in rewards_list])
 
         return q_values  # return an array
 
@@ -102,8 +104,7 @@ class PGAgent(BaseAgent):
                 ## that the predictions have the same mean and standard deviation as
                 ## the current batch of q_values
 
-            raise NotImplementedError
-            values = TODO
+            values = (np.std(q_values) * values_normalized) + np.mean(q_values)
 
             if self.gae_lambda is not None:
                 ## append a dummy T+1 value for simpler recursive calculation
@@ -125,15 +126,20 @@ class PGAgent(BaseAgent):
                         ## 0 otherwise.
                     ## HINT 2: self.gae_lambda is the lambda value in the
                         ## GAE formula
-                    raise NotImplementedError
-
+                    if terminals[i] == 1:
+                        delta = rewards[i] - values[i]
+                        prev_adv = delta
+                    else:
+                        delta = rewards[i] + self.gamma * values[i + 1] - values[i]
+                        prev_adv = delta + self.gamma * self.gae_lambda * prev_adv
+                    advantages[i] = prev_adv
                 # remove dummy advantage
                 advantages = advantages[:-1]
 
             else:
                 ## TODO: compute advantage estimates using q_values, and values as baselines
-                # raise NotImplementedError
-                advantages = TODO
+
+                advantages = q_values - values
 
         # Else, just set the advantage to [Q]
         else:
@@ -143,9 +149,7 @@ class PGAgent(BaseAgent):
         if self.standardize_advantages:
             ## TODO: standardize the advantages to have a mean of zero
             ## and a standard deviation of one
-
-            raise NotImplementedError
-            advantages = TODO
+            advantages = (advantages - np.mean(advantages)) / np.std(advantages)
 
         return advantages
 
@@ -172,8 +176,10 @@ class PGAgent(BaseAgent):
         """
 
         # TODO: create discounted_returns
-        raise NotImplementedError
-
+        rewards = np.array(rewards)
+        discounts = self.gamma ** np.arange(len(rewards))
+        total_discounted_return = np.sum(rewards * discounts)
+        discounted_returns = np.array([total_discounted_return] * len(rewards))
         return discounted_returns
 
     def _discounted_cumsum(self, rewards):
@@ -186,6 +192,7 @@ class PGAgent(BaseAgent):
         # TODO: create `discounted_cumsums`
         # HINT: it is possible to write a vectorized solution, but a solution
             # using a for loop is also fine
-        raise NotImplementedError
-
-        return discounted_cumsums
+        
+        discounts = self.gamma ** np.arange(len(rewards))
+        discounted_cumsum = np.array([np.sum(rewards[i:] * discounts[:len(rewards)-i]) for i in range(len(rewards))])
+        return discounted_cumsum

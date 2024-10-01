@@ -49,10 +49,18 @@ def build_mlp(
         output_activation = _str_to_activation[output_activation]
     
     # TODO: get this from hw1
-    raise NotImplementedError
+    layers = []
+    in_size = input_size
+    for _ in range(n_layers):
+        layers.append(nn.Linear(in_size, size))
+        layers.append(activation)
+        in_size = size
+    layers.append(nn.Linear(in_size, output_size))
+    layers.append(output_activation)
+    return nn.Sequential(*layers)
 
 
-device = None
+device = "cuda:0"
 
 
 def init_gpu(use_gpu=True, gpu_id=0):
