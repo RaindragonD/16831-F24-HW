@@ -69,8 +69,8 @@ backgroundcolor = \color{light-yellow}
 \end{centering}
 \vspace{0.25cm}
 
-\textbf{Andrew ID:} \texttt{Write your Andrew ID here.} \\
-\textbf{Collaborators:} \texttt{Write the Andrew IDs of your collaborators here (if any).}\\ 
+\textbf{Andrew ID:} \texttt{yulongl} \\
+\textbf{Collaborators:} \texttt{None} \\
 \textbf{NOTE:} Please do \textbf{NOT} change the sizes of the answer blocks or plots.
 
 \setcounter{section}{4}
@@ -110,14 +110,14 @@ python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 \
 \begin{answer}[title=Q5.1.2.1,height=9.5cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q1_sb.png}
 \end{answer}
 
 \subsubsubsection{Large batch -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.1.2.2,height=9.5cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q1_lb.png}
 \end{answer}
 
 \subsubsection{Analysis}
@@ -125,16 +125,19 @@ python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 \
 \subsubsubsection{Value estimator -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.1.3.1,height=4cm,width=\linewidth]
 % TODO
+Without advantage standardization, the reward to go value estimator performs better and more stable than the trajectory-centric value estimator for both the small batch and the large batch.
 \end{answer}
 
 \subsubsubsection{Advantage standardization -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.1.3.2,height=4cm,width=\linewidth]
 % TODO
+Based on my experiments, it is unclear whether advantage standardization is helpful for the Cartpole task. For both small batch and large batch, the performance with advantage standardization has higher variance.
 \end{answer}
 
 \subsubsubsection{Batch size -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.1.3.3,height=4cm,width=\linewidth]
 % TODO
+Based on my experiments, it is unclear whether batch size is helpful for the Cartpole task. For both small batch and large batch, the return s converge to around 200 at around 15 iterations. Large batch even seems to have higher variance. However, this might due to the randomness in the experiments.
 \end{answer}
 
 \subsection{Experiment 2 (InvertedPendulum) -- \lbrack15 points total\rbrack}
@@ -145,22 +148,30 @@ python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 \
 \begin{minted}
 [framesep=2mm, fontsize=\scriptsize, breaklines]
 {bash}
-python rob831/scripts/run_hw2.py --env_name InvertedPendulum-v4 \
-    --ep_len 1000 --discount 0.9 -n 100 -l 2 -s 64 -b <b*> -lr <r*> -rtg \
-    --exp_name q2_b<b*>_r<r*>
+
+for b in 1000 5000 10000
+do
+  for lr in 0.005 0.01 0.02 0.03
+  do
+    CUDA_VISIBLE_DEVICES=1 python rob831/scripts/run_hw2.py --env_name InvertedPendulum-v4 \
+    --ep_len 1000 --discount 0.9 -n 100 -l 2 -s 64 -b $b -lr $lr -rtg \
+    --exp_name q2_b${b}_r${lr}
+  done
+done
 \end{minted}
 \end{answer}
 
 \subsubsection{smallest \textbf{b*} and largest \textbf{r*} (same run) -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.2.2,height=4cm,width=\linewidth]
 % TODO
+b* = 1000, r* = 0.01
 \end{answer}
 
 \subsubsection{Plot -- \lbrack5 points\rbrack}
 \begin{answer}[title=Q5.2.3,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q2.png}
 \end{answer}
 
 \setcounter{section}{6}
@@ -184,7 +195,7 @@ python rob831/scripts/run_hw2.py \
 \begin{answer}[title=Q7.1.2,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q3.png}
 \end{answer}
 
 \subsection{Experiment 4 (HalfCheetah) -- \lbrack30 points\rbrack}
@@ -213,47 +224,46 @@ python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
 \begin{answer}[title=Q7.2.2,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q41.png}
 \end{answer}
 
 \subsubsection{(Optional) Optimal b* and r* -- \lbrack3 points\rbrack}
 \begin{answer}[title=Q7.2.3,height=4cm,width=\linewidth]
 % TODO
+I found that $b^* = 10000$ and $r^* = 0.02$ for the HalfCheetah task.
 \end{answer}
 
 \subsubsection{(Optional) Plot -- \lbrack10 points\rbrack}
 \begin{answer}[title=Q7.2.4,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q42.png}
 \end{answer}
 
 \subsubsection{(Optional) Describe how b* and r* affect task performance -- \lbrack7 points\rbrack}
 \begin{answer}[title=Q7.2.5,height=4cm,width=\linewidth]
 % TODO
+With larger b*, the training is more stable and variance is reduced. With larger r*, the agent learns faster. In fact, with b*=30000 and r*=0.02, the agents achieves slightly inferior performance to b*=10000 and r*=0.02, but the training is more stable. With more iterations, the performance of b*=30000 and r*=0.02 is likely to be better. However, for 100 iterations, the performance of b*=10000 and r*=0.02 is the most optimal.
 \end{answer}
 
 \subsubsection{(Optional) Configurations with optimal b* and r* -- \lbrack3 points\rbrack}
 \begin{answer}[title=Q7.2.6,height=6cm,width=\linewidth]
 % TODO
 \begin{minted}
-[framesep=2mm, fontsize=\scriptsize, breaklines]
-{bash}
-python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
-    --discount 0.95 -n 100 -l 2 -s 32 -b <b*> -lr <r*> \
-    --exp_name q4_b<b*>_r<r*>
-
-python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
-    --discount 0.95 -n 100 -l 2 -s 32 -b <b*> -lr <r*> -rtg \
-    --exp_name q4_b<b*>_r<r*>_rtg
-
-python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
-    --discount 0.95 -n 100 -l 2 -s 32 -b <b*> -lr <r*> --nn_baseline \
-    --exp_name q4_b<b*>_r<r*>_nnbaseline
-
-python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
-    --discount 0.95 -n 100 -l 2 -s 32 -b <b*> -lr <r*> -rtg --nn_baseline \
-    --exp_name q4_b<b*>_r<r*>_rtg_nnbaseline
+    [framesep=2mm, fontsize=\scriptsize, breaklines, escapeinside=||, mathescape=true]
+    {python}
+    python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+        --discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 \
+        --exp_name q4_search_b10000_lr0.02
+    python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+        --discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 -rtg \
+        --exp_name q4_search_b10000_lr0.02_rtg
+    python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+        --discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 --nn_baseline \
+        --exp_name q4_search_b10000_lr0.02_nnbaseline
+    python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
+        --discount 0.95 -n 100 -l 2 -s 32 -b 10000 -lr 0.02 -rtg --nn_baseline \
+        --exp_name q4_search_b10000_lr0.02_rtg_nnbaseline
 \end{minted}
 \end{answer}
 
@@ -261,7 +271,7 @@ python rob831/scripts/run_hw2.py --env_name HalfCheetah-v4 --ep_len 150 \
 \begin{answer}[title=Q7.2.7,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q41.png}
 \end{answer}
 
 \section{Implementing Generalized Advantage Estimation}
@@ -286,12 +296,13 @@ python rob831/scripts/run_hw2.py \
 \begin{answer}[title=Q8.1.2,height=10cm,width=\linewidth]
 % TODO
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q5.png}
 \end{answer}
 
 \subsubsection{Describe how $\lambda$ affects task performance -- \lbrack7 points\rbrack}
 \begin{answer}[title=Q8.1.3,height=4cm,width=\linewidth]
 % TODO
+With $\lambda = 0$, the performance is the worst, and performance is similar for $\lambda = 0.95, 0.99, 1$. This shows that a baseline is needed to reduce variance and improve the performance.
 \end{answer}
 
 \clearpage
@@ -301,12 +312,13 @@ python rob831/scripts/run_hw2.py \
 \subsection{Parallelization -- \lbrack15 points\rbrack}
 \begin{answer}[title=Q9.1,height=4cm,width=\linewidth]
 % TODO (optional)
-Difference in training time: 
+Difference in training time: 5m25s vs 1m12s (8 threads)
 \vspace{1.0cm}
 \begin{minted}
 [framesep=2mm, fontsize=\scriptsize, breaklines]
 {bash}
-python rob831/scripts/run_hw2.py \
+time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg -dsa --num_threads 1 --exp_name q6_1_thread;
+time python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 1000 -rtg -dsa --num_threads 8 --exp_name q6_8_threads;
 \end{minted}
 \end{answer}
 
@@ -314,13 +326,15 @@ python rob831/scripts/run_hw2.py \
 \begin{answer}[title=Q9.1,height=14cm,width=\linewidth]
 % TODO (optional)
 \centering
-\includegraphics[height=8cm]{example-image-a}
+\includegraphics[height=8cm]{figures/q7.png}
 
 \vspace{1.0cm}
 \begin{minted}
 [framesep=2mm, fontsize=\scriptsize, breaklines]
 {bash}
-python rob831/scripts/run_hw2.py \
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 1 --exp_name q7_1step
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 8 --exp_name q7_8step
+python rob831/scripts/run_hw2.py --env_name CartPole-v0 -n 100 -b 5000 -rtg -dsa --num_agent_train_steps_per_iter 32 --exp_name q7_32step
 \end{minted}
 
 \end{answer}
