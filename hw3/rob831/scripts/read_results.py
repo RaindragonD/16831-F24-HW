@@ -3,6 +3,8 @@ import glob
 import os
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+import numpy as np
+import matplotlib.pyplot as plt
 
 def get_section_results(file):
     """
@@ -22,15 +24,26 @@ def get_section_results(file):
 
 if __name__ == '__main__':
 
-    def plot_results(exp):
-        logdir = os.path.join('data', f"{exp}*")
-        print('logdir:', logdir)
-        eventfile = glob.glob(logdir)[0]
+    def plot_results(exp, la):
+        logdir = os.path.join('data', f"{exp}*", "events*")
+        eventfiles = glob.glob(logdir)
+        
+        Ys = []
+        for eventfile in eventfiles:
+            X, Y = get_section_results(eventfile)
+            Ys.append(Y)
+        mean = np.mean(np.array(Ys), axis=0)
+        std = np.std(np.array(Ys), axis=0)
+        
 
-        X, Y = get_section_results(eventfile)
-        for i, (x, y) in enumerate(zip(X, Y)):
-            print('Iteration {:d} | Train steps: {:d} | Return: {}'.format(i, int(x), y))
-            
-    plot_results('q1_doubledqn')
-    plot_results('q1_dqn')
+        plt.errorbar(X, mean, yerr=std, label=la, capsize=5)
+        plt.xlabel('Train Steps')
+        plt.ylabel('Average Return')
+        plt.title(f'Training Results for {exp}')
+
+    plt.legend()
+    plt.show()
+
+    plot_results('q1_doubledqn', 'Double DQN')
+    plot_results('q1_dqn', 'DQN')
     
