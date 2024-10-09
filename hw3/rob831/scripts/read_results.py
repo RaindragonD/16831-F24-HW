@@ -21,14 +21,16 @@ def get_section_results(file):
     return X, Y
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--logdir', type=str, required=True, help='path to directory contaning tensorboard results (i.e. data/q1)')
-    args = parser.parse_args()
 
-    logdir = os.path.join(args.logdir, 'events*')
-    eventfile = glob.glob(logdir)[0]
+    def plot_results(exp):
+        logdir = os.path.join('data', f"{exp}*")
+        print('logdir:', logdir)
+        eventfile = glob.glob(logdir)[0]
 
-    X, Y = get_section_results(eventfile)
+        X, Y = get_section_results(eventfile)
+        for i, (x, y) in enumerate(zip(X, Y)):
+            print('Iteration {:d} | Train steps: {:d} | Return: {}'.format(i, int(x), y))
+            
+    plot_results('q1_doubledqn')
+    plot_results('q1_dqn')
     
-    for i, (x, y) in enumerate(zip(X, Y)):
-        print('Iteration {:d} | Train steps: {:d} | Return: {}'.format(i, int(x), y))
