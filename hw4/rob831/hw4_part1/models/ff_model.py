@@ -105,8 +105,10 @@ class FFModel(nn.Module, BaseModel):
              - 'delta_std'
         :return: a numpy array of the predicted next-states (s_t+1)
         """
-        obs = ptu.from_numpy(obs)
-        acs = ptu.from_numpy(acs)
+        if not isinstance(obs, torch.Tensor):
+            obs = ptu.from_numpy(obs)
+        if not isinstance(acs, torch.Tensor):
+            acs = ptu.from_numpy(acs)
         obs_mean = ptu.from_numpy(data_statistics["obs_mean"])
         obs_std = ptu.from_numpy(data_statistics["obs_std"])
         acs_mean = ptu.from_numpy(data_statistics["acs_mean"])
@@ -119,7 +121,7 @@ class FFModel(nn.Module, BaseModel):
         )[0]
         # Hint: `self(...)` returns a tuple, but you only need to use one of the
         # outputs.
-        return prediction
+        return prediction.detach().cpu().numpy()
 
     def update(self, observations, actions, next_observations, data_statistics):
         """
@@ -138,7 +140,7 @@ class FFModel(nn.Module, BaseModel):
         """
         obs = ptu.from_numpy(observations)
         acs = ptu.from_numpy(actions)
-        next_observations = ptu.from_numpy(next_observations)
+        next_obs = ptu.from_numpy(next_observations)
         obs_mean = ptu.from_numpy(data_statistics["obs_mean"])
         obs_std = ptu.from_numpy(data_statistics["obs_std"])
         acs_mean = ptu.from_numpy(data_statistics["acs_mean"])
@@ -146,7 +148,7 @@ class FFModel(nn.Module, BaseModel):
         delta_mean = ptu.from_numpy(data_statistics["delta_mean"])
         delta_std = ptu.from_numpy(data_statistics["delta_std"])
         
-        target = ((next_observations - observations) - delta_mean)/delta_std
+        target = ((next_obs - obs) - delta_mean)/delta_std
         
         # Hint: you should use `data_statistics['delta_mean']` and
         # `data_statistics['delta_std']`, which keep track of the mean
